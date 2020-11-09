@@ -1,5 +1,5 @@
 MODULE testServer;
-IMPORT time, server, Internet, Out, Platform;
+IMPORT time, server, Internet, Out, Platform, oocIntStr, Strings, fifo, strutils;
 
 VAR s: server.server;
 
@@ -10,11 +10,38 @@ VAR
   startTime, endTime: time.unxTime;
   dfTime: LONGREAL;
   keep: BOOLEAN;
+  
+  f: fifo.fifo;
+  b: BOOLEAN;
+  channel: ARRAY 32 OF CHAR;
+  msg: ARRAY 32 OF CHAR;
+  msgstrs: strutils.pstrings;
 BEGIN
   keep := TRUE;
+  
+  oocIntStr.IntToStr(s^.pid, channel);
+  Strings.Append("|", channel);
+  Strings.Append(s^.clientIP, channel);
+  f := fifo.Create(channel);
+  b := fifo.SetNonBlocking(f);
+  IF b THEN Out.String("set fifo to nb") ELSE Out.String("fifo not nb"); END;
+  Out.Ln;
+
+
   time.unixTime(startTime);
   aff := "Affirmative, Dave";
   REPEAT
+    b := fifo.Read(f, msg);
+    IF msg # "" THEN
+      msgstrs := strutils.tokenize(msg, ' ');
+      IF LEN(msgstrs^) = 2 THEN
+        IF msgstrs[0]^ = "send" THEN
+          IF ~Internet.Write(s^.newsockfd, msgstrs[1]^) THEN
+            Out.String("error writing to socket"); Out.Ln
+          END;
+	END;
+      END;
+    END;
     (*Out.String("client IP: ");
     Out.String(s^.clientIP); Out.String(" ; ");
     Out.String("reading from client"); Out.Ln;*)
@@ -40,6 +67,7 @@ BEGIN
   Out.String("connection closed, exiting"); Out.Ln;
   Internet.Disconnect(s^.newsockfd);
   Out.String("disconnected"); Out.Ln; Out.Ln;
+  b := fifo.Destroy(f);
   HALT(0);
 END DoSmth;
 
@@ -47,7 +75,7 @@ BEGIN
 s := server.Create();
 server.setPort(s, 2023);
 server.setMaxQueue(s, 5);
-server.setTimeOut(s, 10.0);
+server.setTimeOut(s, 90.0);
 server.setHandler(s, DoSmth);
 
 server.start(s);
