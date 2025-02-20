@@ -1,30 +1,55 @@
+DEPEND = github.com/norayr/strutils github.com/norayr/lists github.com/norayr/Internet github.com/norayr/time github.com/norayr/fifo
+
 VOC = /opt/voc/bin/voc
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 mkfile_dir_path := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-build_dir_path := $(mkfile_dir_path)/build
+$(info $$mkfile_path is [${mkfile_path}])
+$(info $$mkfile_dir_path is [${mkfile_dir_path}])
+ifndef BUILD
+BUILD="build"
+endif
+build_dir_path := $(mkfile_dir_path)/$(BUILD)
 current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
 BLD := $(mkfile_dir_path)/build
-DPS := $(mkfile_dir_path)/dps
-
-all: get_deps build_deps
+DPD  =  deps
+ifndef DPS
+DPS := $(mkfile_dir_path)/$(DPD)
+endif
+all: get_deps build_deps buildThis
 
 get_deps:
-		mkdir -p $(DPS)
-		if [ -d $(DPS)/strutils ]; then cd $(DPS)/strutils; git pull; cd -; else cd $(DPS); git clone https://github.com/norayr/strutils; cd -; fi
-		if [ -d $(DPS)/lists ]; then cd $(DPS)/lists; git pull; cd -; else cd $(DPS); git clone https://github.com/norayr/lists; cd -; fi
-		if [ -d $(DPS)/Internet ]; then cd $(DPS)/Internet; git pull; cd -; else cd $(DPS); git clone https://github.com/norayr/Internet; cd -; fi
-		if [ -d $(DPS)/time ]; then cd $(DPS)/time; git pull; cd -; else cd $(DPS); git clone https://github.com/norayr/time; cd -; fi
-		if [ -d $(DPS)/fifo ]; then cd $(DPS)/fifo; git pull; cd -; else cd $(DPS); git clone https://github.com/norayr/fifo; cd -; fi
+	@for i in $(DEPEND); do \
+			if [ -d "$(DPS)/$${i}" ]; then \
+				 cd "$(DPS)/$${i}"; \
+				 git pull; \
+				 cd - ;    \
+				 else \
+				 mkdir -p "$(DPS)/$${i}"; \
+				 cd "$(DPS)/$${i}"; \
+				 cd .. ; \
+				 git clone "https://$${i}"; \
+				 cd - ; \
+			fi; \
+	done
 
 build_deps:
-	mkdir -p $(mkfile_dir_path)
-	cd $(CURDIR)/$(BUILD)
-	make -f $(mkfile_dir_path)/dps/lists/GNUmakefile BUILD=$(BLD)
-	make -f $(mkfile_dir_path)/dps/Internet/GNUmakefile BUILD=$(BLD)
-	make -f $(mkfile_dir_path)/dps/time/GNUmakefile BUILD=$(BLD)
-	make -f $(mkfile_dir_path)/dps/fifo/GNUmakefile BUILD=$(BLD)
-	cd $(BLD) && $(VOC) $(mkfile_dir_path)/src/testServer.Mod -m
-	cd $(BLD) && $(VOC) $(mkfile_dir_path)/src/testClient.Mod -m
+	mkdir -p $(BLD)
+	cd $(BLD); \
+	for i in $(DEPEND); do \
+		if [ -f "$(DPS)/$${i}/GNUmakefile" ]; then \
+			make -f "$(DPS)/$${i}/GNUmakefile" BUILD=$(BLD); \
+		else \
+			make -f "$(DPS)/$${i}/Makefile" BUILD=$(BLD); \
+		fi; \
+	done
+
+buildThis:
+	cd $(BUILD) && $(VOC) -m $(mkfile_dir_path)/src/testServer.Mod
+	cd $(BUILD) && $(VOC) -m $(mkfile_dir_path)/src/testClient.Mod
+
+tests:
+	#cd $(BUILD) && $(VOC) $(mkfile_dir_path)/test/testList.Mod -m
+	#build/testList
 
 clean:
-			if [ -d "$(BLD)" ]; then rm -rf $(BLD); fi
+	if [ -d "$(BUILD)" ]; then rm -rf $(BLD); fi
