@@ -1,5 +1,5 @@
 MODULE testServer;
-IMPORT time, server, Internet, Out, Platform, oocIntStr, Strings, fifo, strutils;
+IMPORT time, server, Internet, Out, Platform, oocIntStr, Strings, fifo, strUtils;
 
 VAR s: server.server;
 
@@ -10,15 +10,15 @@ VAR
   startTime, endTime: time.unxTime;
   dfTime: LONGREAL;
   keep: BOOLEAN;
-  
+
   f: fifo.fifo;
   b: BOOLEAN;
   channel: ARRAY 32 OF CHAR;
   msg: ARRAY 32 OF CHAR;
-  msgstrs: strutils.pstrings;
+  msgstrs: strUtils.pstrings;
 BEGIN
   keep := TRUE;
-  
+
   oocIntStr.IntToStr(s^.pid, channel);
   Strings.Append("|", channel);
   Strings.Append(s^.clientIP, channel);
@@ -33,13 +33,13 @@ BEGIN
   REPEAT
     b := fifo.Read(f, msg);
     IF msg # "" THEN
-      msgstrs := strutils.tokenize(msg, ' ');
+      msgstrs := strUtils.tokenize(msg, ' ');
       IF LEN(msgstrs^) = 2 THEN
         IF msgstrs[0]^ = "send" THEN
           IF ~Internet.Write(s^.newsockfd, msgstrs[1]^) THEN
             Out.String("error writing to socket"); Out.Ln
           END;
-	END;
+  END;
       END;
     END;
     (*Out.String("client IP: ");
